@@ -10,6 +10,8 @@ from vercel.blob import BlobClient
 
 app = FastAPI()
 
+BLOB_READ_WRITE_TOKEN = "vercel_blob_rw_ncDq5ecCANAxTUAc_J5OksLjXSnxOk5uyX58Ld2wzosKTdd"
+
 
 def json_error(status_code: int, message: str) -> JSONResponse:
     return JSONResponse(
@@ -74,7 +76,10 @@ async def upload(request: Request):
             f"start-{safe_start_after}_end-{safe_end_key}_{safe_sha}.csv.gz"
         )
 
-        client = BlobClient()
+        if BLOB_READ_WRITE_TOKEN == "PASTE_YOUR_VERCEL_BLOB_READ_WRITE_TOKEN_HERE":
+            return json_error(500, "blob token is not configured")
+
+        client = BlobClient(token=BLOB_READ_WRITE_TOKEN)
         blob = client.put(
             filename,
             payload_gzip,
