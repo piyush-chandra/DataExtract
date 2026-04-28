@@ -1,58 +1,46 @@
-import json
 import base64
-from http.server import BaseHTTPRequestHandler
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from vercel_blob import put
 
+app = FastAPI()
 
-class handler(BaseHTTPRequestHandler):
 
-    def do_POST(self):
+@app.post("/api/upload")
+async def upload(request: Request):
 
-        try:
-            content_length = int(self.headers.get("Content-Length", 0))
-            body = self.rfile.read(content_length)
+    try:
+        data = await request.json()
 
-            data = json.loads(body)
+        job_name = data.get("jobName")
+        end_key = data.get("endKey")
+        payload_sha = data.get("payloadSha256")
+        payload_b64 = data.get("payloadGzipBase64")
 
-            job_name = data.get("jobName")
-            end_key = data.get("endKey")
-            payload_sha = data.get("payloadSha256")
-            payload_b64 = data.get("payloadGzipBase64")
-
-            if not payload_b64:
-                raise Exception("missing payload")
-
-            # decode gzip payload
-            payload_bytes = base64.b64decode(payload_b64)
-
-            # blob filename
-            filename = f"{job_name}/{end_key}_{payload_sha}.gz"
-
-            blob = put(
-                filename,
-                payload_bytes,
-                access="private"
+        if not payload_b64:
+            return JSONResponse(
+                status_code=400,
+                content={"stored": False, "error": "missing payload"}
             )
 
-            response = {
-                "stored": True,
-                "lastCustId": end_key,
-                "blobUrl": blob["url"]
-            }
+        payload_bytes = base64.b64decode(payload_b64)
 
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
+        filename = f"{job_name}/{end_key}_{payload_sha}.gz"
 
-            self.wfile.write(json.dumps(response).encode())
+        blob = put(filename, payload_bytes, access="private")
 
-        except Exception as e:
+        return {
+            "stored": True,
+            "lastCustId": end_key,
+            "blobUrl": blob["url"]
+        }
 
-            self.send_response(500)
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
+    except Exception as e:
 
-            self.wfile.write(json.dumps({
+        return JSONResponse(
+            status_code=500,
+            content={
                 "stored": False,
                 "error": str(e)
-            }).encode())
+            }
+        )
