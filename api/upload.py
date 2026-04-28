@@ -1,7 +1,7 @@
 import base64
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from vercel_blob import put
+from vercel.blob import BlobClient
 
 app = FastAPI()
 
@@ -27,12 +27,13 @@ async def upload(request: Request):
 
         filename = f"{job_name}/{end_key}_{payload_sha}.gz"
 
-        blob = put(filename, payload_bytes, access="private")
+        client = BlobClient()
+        blob = client.put(filename, payload_bytes, access="private")
 
         return {
             "stored": True,
             "lastCustId": end_key,
-            "blobUrl": blob["url"]
+            "blobUrl": blob.url
         }
 
     except Exception as e:
