@@ -1,2 +1,3 @@
 fastapi
-vercel
+boto3
+uvicorn

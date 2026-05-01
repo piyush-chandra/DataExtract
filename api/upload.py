@@ -6,11 +6,10 @@ import re
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from vercel.blob import BlobClient
+
+from api.r2_storage import R2StorageClient
 
 app = FastAPI()
-
-BLOB_READ_WRITE_TOKEN = "vercel_blob_rw_ncDq5ecCANAxTUAc_J5OksLjXSnxOk5uyX58Ld2wzosKTdd"
 
 
 def json_error(status_code: int, message: str) -> JSONResponse:
@@ -76,14 +75,10 @@ async def upload(request: Request):
             f"start-{safe_start_after}_end-{safe_end_key}_{safe_sha}.csv.gz"
         )
 
-        if BLOB_READ_WRITE_TOKEN == "PASTE_YOUR_VERCEL_BLOB_READ_WRITE_TOKEN_HERE":
-            return json_error(500, "blob token is not configured")
-
-        client = BlobClient(token=BLOB_READ_WRITE_TOKEN)
-        blob = client.put(
+        client = R2StorageClient()
+        stored_object = client.put(
             filename,
             payload_gzip,
-            access="private",
             content_type="application/gzip",
             overwrite=True,
         )
@@ -91,8 +86,8 @@ async def upload(request: Request):
         return {
             "stored": True,
             "lastCustId": end_key,
-            "blobUrl": blob.url,
-            "pathname": blob.pathname,
+            "blobUrl": stored_object.url,
+            "pathname": stored_object.pathname,
             "jobName": job_name,
             "startAfter": start_after,
             "rowCount": row_count,
